@@ -70,16 +70,10 @@ cache.on('invalidate', (key) => {
 2. **缓存未命中**：执行 Redis 命令，存入 `Map`，记录 key 映射
 3. **失效处理**：根据 key 找到对应的 cacheKey，从 `Map` 中删除
 
-## 对比
+## 设计哲学
 
-| 功能 | BasicClientSideCache | SimpleClientSideCache |
-|------|---------------------|----------------------|
-| 代码行数 | 600+ | 80 |
-| 本地缓存 | ✅ | ✅ |
-| Invalidation | ✅ | ✅ |
-| TTL | ✅ | ❌ |
-| maxEntries | ✅ | ❌ |
-| LRU/FIFO | ✅ | ❌ |
-| 统计信息 | ✅ | ❌ |
-| Promise 缓存 | ✅ | ❌ |
-| 复杂度 | 高 | 低 |
+SimpleClientSideCache 专注于**极简和可控**：
+- 只提供最核心的缓存功能
+- 代码量控制在 80 行左右，便于理解和维护
+- 没有复杂的淘汰策略、TTL 管理等功能
+- 适合对缓存有完全掌控需求的场景

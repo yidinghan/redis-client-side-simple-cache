@@ -18,6 +18,7 @@
     "test": "node --test test/*.js",
     "test:unit": "node --test test/test-simple-cache.js",
     "test:complex": "node --test test/test-complex-scenarios.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.js",
     "demo": "node examples/demo.js",
     "worker": "node examples/worker.js",
     "master": "node examples/master.js",
@@ -46,12 +47,11 @@
   "author": "playdingnow <playdingnow@gmail.gf.com.cn>",
   "license": "ISC",
   "dependencies": {
-    "redis": "^5.9.0"
+    "redis": "^4.0.0 || ^5.0.0"
   },
   "peerDependencies": {
     "redis": "^4.0.0 || ^5.0.0"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18"
   }

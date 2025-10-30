@@ -129,7 +129,7 @@ new SimpleClientSideCache()
 
 ## 🧪 测试
 
-包含全面的测试覆盖：
+包含全面的测试覆盖（**100% 行覆盖率，96% 分支覆盖率**）：
 
 1. ✅ 并发读写操作（3 个工作进程）
 2. ✅ 批量操作（MGET 及单键失效）
@@ -137,12 +137,15 @@ new SimpleClientSideCache()
 4. ✅ 边缘情况（null、空字符串、1MB 负载、特殊字符 中文/emoji）
 5. ✅ 失效场景（SET、DEL、FLUSHDB）
 6. ✅ 内存泄漏检测（1000 次迭代）
+7. ✅ 错误处理（onError、onClose）
+8. ✅ API 完整性（stats、clear、invalidate）
 
 运行测试：
 ```bash
 npm test                 # 所有测试
 npm run test:unit        # 基础功能
 npm run test:complex     # 复杂场景
+npm run test:coverage    # 测试 + 覆盖率报告
 ```
 
 ## 📖 文档
@@ -156,20 +159,6 @@ npm run test:complex     # 复杂场景
 - Node.js >= 18
 - Redis >= 6.0（支持 RESP3 和客户端缓存）
 - `redis` 包 v4.0.0 或 v5.0.0+
-
-## 🤝 与 BasicClientSideCache 对比
-
-| 特性 | SimpleClientSideCache | BasicClientSideCache |
-|------|----------------------|---------------------|
-| 代码量 | ~80 行 | 600+ 行 |
-| TTL 过期 | ❌ | ✅ |
-| 最大条目限制 | ❌ | ✅ |
-| 淘汰策略（LRU/FIFO） | ❌ | ✅ |
-| 命中率统计 | ❌ | ✅ |
-| Promise 去重 | ❌ | ✅ |
-| 手动失效 | ✅ | ✅ |
-| 事件发射 | ✅ | ✅ |
-| **最适合** | 简洁可控 | 生产特性 |
 
 ## 📄 许可证
 

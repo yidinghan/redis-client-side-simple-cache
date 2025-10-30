@@ -58,6 +58,24 @@ console.log('Cache size:', cache.size());
 console.log('Cache stats:', cache.stats());
 ```
 
+## 🚀 Performance Benchmarks
+
+In hot key scenarios (5 keys repeatedly read), client-side caching dramatically improves performance:
+
+| Metric | Without Cache | With Cache | Improvement |
+|--------|---------------|------------|-------------|
+| **Throughput** | 4,409 ops/s | 1,388,889 ops/s | **315x** |
+| **Avg Latency** | 0.227ms | 0.001ms | **99.7%↓** |
+| **Time per Round** (100K ops) | 22.68s | 0.07s | Save 22.61s |
+
+> Benchmark config: 3 rounds × 100,000 operations, 5 hot keys, 1KB payload  
+> Run benchmark: `node scripts/bench-get-performance.js`
+
+**Key Findings**:
+- 🚀 Cache hit latency drops from 0.227ms to 0.001ms
+- ⚡ Handles 1.3M+ read operations per second (vs 4K without cache)
+- 💾 Best for read-heavy scenarios with 10:1+ read/write ratio
+
 ## 📚 API Reference
 
 ### SimpleClientSideCache
@@ -126,27 +144,6 @@ Based on Redis RESP3 protocol client-side caching:
 3. **Local Caching**: First GET stores data in local Map
 4. **Invalidation Notification**: When key changes, Redis pushes invalidation message
 5. **Automatic Refresh**: Next GET fetches latest data and re-caches
-
-## 🧪 Testing
-
-Includes comprehensive test coverage (**100% line coverage, 96% branch coverage**):
-
-1. ✅ Concurrent read/write operations (3 worker processes)
-2. ✅ Batch operations (MGET with per-key invalidation)
-3. ✅ Multiple data types (String, Hash, JSON)
-4. ✅ Edge cases (null, empty strings, 1MB payloads, special chars 中文/emoji)
-5. ✅ Invalidation scenarios (SET, DEL, FLUSHDB)
-6. ✅ Memory leak detection (1000 iterations)
-7. ✅ Error handling (onError, onClose)
-8. ✅ API completeness (stats, clear, invalidate)
-
-Run tests:
-```bash
-npm test                 # All tests
-npm run test:unit        # Basic functionality
-npm run test:complex     # Complex scenarios
-npm run test:coverage    # Tests + coverage report
-```
 
 ## 📖 Documentation
 

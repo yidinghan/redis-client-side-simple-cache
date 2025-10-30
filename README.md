@@ -1,5 +1,7 @@
 # Redis Client-Side Caching Demo
 
+[![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
+
 这是一个演示 Redis 6+ **客户端缓存（Client-Side Caching）** 功能的项目，展示了读写分离架构。
 
 ## 架构设计

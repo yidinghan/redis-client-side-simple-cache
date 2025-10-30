@@ -1,23 +1,58 @@
 {
-  "name": "redis-client-side-cache-demo",
+  "name": "redis-simple-client-side-cache",
   "version": "1.0.0",
-  "description": "Demo of Redis 6+ client-side cache with read/write split using node-redis",
-  "main": "src/worker.js",
+  "description": "A minimal ~80-line client-side cache implementation for Redis with RESP3 protocol support",
+  "main": "src/simple-cache.js",
   "type": "commonjs",
-  "scripts": {
-    "test": "node test/test-simple-cache.js && node test/test-complex-scenarios.js",
-    "demo": "node src/demo.js",
-    "worker": "node src/worker.js",
-    "master": "node src/master.js",
-    "master:auto": "node src/master.js auto"
+  "exports": {
+    ".": "./src/simple-cache.js"
   },
+  "files": [
+    "src/simple-cache.js",
+    "README.md",
+    "LICENSE",
+    "docs/SIMPLE-CACHE.md",
+    "docs/USAGE.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.js",
+    "test:unit": "node --test test/test-simple-cache.js",
+    "test:complex": "node --test test/test-complex-scenarios.js",
+    "demo": "node examples/demo.js",
+    "worker": "node examples/worker.js",
+    "master": "node examples/master.js",
+    "master:auto": "node examples/master.js auto"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yidinghan/redis-client-side-simple-cache.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yidinghan/redis-client-side-simple-cache/issues"
+  },
+  "homepage": "https://github.com/yidinghan/redis-client-side-simple-cache#readme",
+  "keywords": [
+    "redis",
+    "cache",
+    "client-side-cache",
+    "client-side-caching",
+    "resp3",
+    "invalidation",
+    "tracking",
+    "node-redis",
+    "performance",
+    "minimal"
+  ],
+  "author": "playdingnow <playdingnow@gmail.gf.com.cn>",
+  "license": "ISC",
   "dependencies": {
     "redis": "^5.9.0"
   },
+  "peerDependencies": {
+    "redis": "^4.0.0 || ^5.0.0"
+  },
+  "devDependencies": {},
   "engines": {
     "node": ">=18"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  }
 }

@@ -1,0 +1,25 @@
+# Test files
+test/
+examples/
+
+# Documentation (keep only essential docs in package)
+docs/audit-*.txt
+docs/audit-*.md
+
+# Development files
+.github/
+.git/
+.gitignore
+.editorconfig
+.nvmrc
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.DS_Store
+
+# Lock files (let users manage their own)
+package-lock.json

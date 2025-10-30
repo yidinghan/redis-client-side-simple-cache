@@ -1,79 +1,68 @@
-#!/usr/bin/env node
-
+const { test, describe } = require('node:test');
+const assert = require('node:assert');
 const redis = require('redis');
 const { SimpleClientSideCache } = require('../src/simple-cache');
 
-async function test() {
-  console.log('=== Simple Client-Side Cache Test ===\n');
+describe('Simple Client-Side Cache', () => {
+  test('basic cache operations and invalidation', async () => {
+    const cache = new SimpleClientSideCache();
 
-  const cache = new SimpleClientSideCache();
-
-  const worker = redis.createClient({
-    socket: { host: 'localhost', port: 6379 },
-    RESP: 3,
-    clientSideCache: cache
-  });
-
-  const master = redis.createClient({
-    socket: { host: 'localhost', port: 6379 }
-  });
-
-  try {
-    await worker.connect();
-    await master.connect();
-    console.log('✅ Connected\n');
-
-    cache.on('invalidate', (key) => {
-      console.log(`🔔 Invalidated: ${key}`);
+    const worker = redis.createClient({
+      socket: { host: 'localhost', port: 6379 },
+      RESP: 3,
+      clientSideCache: cache
     });
 
-    // Step 1: Master writes data
-    console.log('--- Step 1: Master writes ---');
-    await master.set('test:1', 'value1');
-    await master.set('test:2', 'value2');
-    console.log(`Cache size: ${cache.size()}\n`);
+    const master = redis.createClient({
+      socket: { host: 'localhost', port: 6379 }
+    });
 
-    // Step 2: Worker reads (cache miss, load from Redis)
-    console.log('--- Step 2: Worker reads (miss) ---');
-    const v1 = await worker.get('test:1');
-    const v2 = await worker.get('test:2');
-    console.log(`Got: test:1=${v1}, test:2=${v2}`);
-    console.log(`Cache size: ${cache.size()}\n`);
+    try {
+      await worker.connect();
+      await master.connect();
 
-    // Step 3: Worker reads again (cache hit)
-    console.log('--- Step 3: Worker reads (hit) ---');
-    const v1b = await worker.get('test:1');
-    const v2b = await worker.get('test:2');
-    console.log(`Got: test:1=${v1b}, test:2=${v2b}`);
-    console.log(`Cache size: ${cache.size()}\n`);
+      let invalidatedKey = null;
+      cache.on('invalidate', (key) => {
+        invalidatedKey = key;
+      });
 
-    // Step 4: Master modifies data
-    console.log('--- Step 4: Master modifies ---');
-    await master.set('test:1', 'newvalue');
-    await new Promise(r => setTimeout(r, 100));
-    console.log(`Cache size: ${cache.size()}\n`);
+      // Step 1: Master writes data
+      await master.set('test:1', 'value1');
+      await master.set('test:2', 'value2');
+      assert.strictEqual(cache.size(), 0, 'Cache should be empty before reads');
 
-    // Step 5: Worker reads modified data
-    console.log('--- Step 5: Worker reads (after invalidation) ---');
-    const v1c = await worker.get('test:1');
-    const v2c = await worker.get('test:2');
-    console.log(`Got: test:1=${v1c}, test:2=${v2c}`);
-    console.log(`Cache size: ${cache.size()}\n`);
+      // Step 2: Worker reads (cache miss, load from Redis)
+      const v1 = await worker.get('test:1');
+      const v2 = await worker.get('test:2');
+      assert.strictEqual(v1, 'value1', 'Should get value1');
+      assert.strictEqual(v2, 'value2', 'Should get value2');
+      assert.strictEqual(cache.size(), 2, 'Cache should have 2 entries');
 
-    // Cleanup
-    await master.del('test:1', 'test:2');
-    console.log('✅ Test completed');
+      // Step 3: Worker reads again (cache hit)
+      const v1b = await worker.get('test:1');
+      const v2b = await worker.get('test:2');
+      assert.strictEqual(v1b, 'value1', 'Should hit cache for value1');
+      assert.strictEqual(v2b, 'value2', 'Should hit cache for value2');
+      assert.strictEqual(cache.size(), 2, 'Cache size unchanged');
 
-  } catch (error) {
-    console.error('❌ Error:', error);
-  } finally {
-    await worker.quit();
-    await master.quit();
-  }
-}
+      // Step 4: Master modifies data
+      await master.set('test:1', 'newvalue');
+      await new Promise(r => setTimeout(r, 100));
+      assert.ok(invalidatedKey !== null, 'Should receive invalidation');
+      assert.strictEqual(cache.size(), 1, 'Cache should have 1 entry after invalidation');
 
-if (require.main === module) {
-  test();
-}
+      // Step 5: Worker reads modified data
+      const v1c = await worker.get('test:1');
+      const v2c = await worker.get('test:2');
+      assert.strictEqual(v1c, 'newvalue', 'Should get new value');
+      assert.strictEqual(v2c, 'value2', 'Should still have cached value2');
 
-module.exports = { test };
+      // Cleanup
+      await master.del('test:1', 'test:2');
+
+    } finally {
+      await worker.quit();
+      await master.quit();
+    }
+  });
+});

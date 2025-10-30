@@ -5,7 +5,7 @@
   "main": "src/worker.js",
   "type": "commonjs",
   "scripts": {
-    "test": "node test-connection.js",
+    "test": "node test/test-simple-cache.js && node test/test-complex-scenarios.js",
     "demo": "node src/demo.js",
     "worker": "node src/worker.js",
     "master": "node src/master.js",

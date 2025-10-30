@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const redis = require('redis');
-const { SimpleClientSideCache } = require('./src/simple-cache');
+const { SimpleClientSideCache } = require('../src/simple-cache');
 
 async function test() {
   console.log('=== Simple Client-Side Cache Test ===\n');

@@ -1,0 +1,72 @@
+======================================================================
+Redis GET Performance Benchmark
+Client-Side Caching vs No Caching
+======================================================================
+Configuration:
+  - Rounds: 3
+  - Keys: 5 hot keys
+  - Payload size: 1024 bytes
+  - Warmup iterations: 1,000
+  - Benchmark iterations: 100,000 per round
+======================================================================
+
+[ 1/2 ] Benchmarking WITHOUT client-side caching...
+Setting up test data...
+✓ Created 5 keys with 1024 byte payload
+
+  Warming up (1,000 iterations)...
+  Round 1/3: Running benchmark (100,000 iterations)...
+    -> 4,343 ops/s, 0.230ms avg latency
+  Round 2/3: Running benchmark (100,000 iterations)...
+    -> 4,439 ops/s, 0.225ms avg latency
+  Round 3/3: Running benchmark (100,000 iterations)...
+    -> 4,447 ops/s, 0.225ms avg latency
+  ✓ Complete
+
+[ 2/2 ] Benchmarking WITH client-side caching...
+Setting up test data...
+✓ Created 5 keys with 1024 byte payload
+
+  Warming up (1,000 iterations)...
+  Cache populated: 5 entries
+  Round 1/3: Running benchmark (100,000 iterations)...
+    -> 1,298,701 ops/s, 0.001ms avg latency
+  Round 2/3: Running benchmark (100,000 iterations)...
+    -> 1,449,275 ops/s, 0.001ms avg latency
+  Round 3/3: Running benchmark (100,000 iterations)...
+    -> 1,428,571 ops/s, 0.001ms avg latency
+  ✓ Complete
+
+======================================================================
+RESULTS
+======================================================================
+
+WITHOUT Client-Side Caching (3 rounds average):
+  Avg time:        22679.67ms
+  Avg ops/sec:     4,409 ops/s
+  Avg latency:     0.227ms
+
+WITH Client-Side Caching (3 rounds average):
+  Avg time:        72.00ms
+  Avg ops/sec:     1,388,889 ops/s
+  Avg latency:     0.001ms
+  Cache size:      5 entries
+
+PERFORMANCE IMPROVEMENT:
+  Speedup:         315.71x faster
+  Latency reduced: 99.7%
+  Time saved:      22607.67ms per round
+
+DETAILED RESULTS BY ROUND:
+
+Without Cache:
+  Round 1: 4,343 ops/s, 0.230ms latency, 23024.00ms total
+  Round 2: 4,439 ops/s, 0.225ms latency, 22526.00ms total
+  Round 3: 4,447 ops/s, 0.225ms latency, 22489.00ms total
+
+With Cache:
+  Round 1: 1,298,701 ops/s, 0.001ms latency, 77.00ms total
+  Round 2: 1,449,275 ops/s, 0.001ms latency, 69.00ms total
+  Round 3: 1,428,571 ops/s, 0.001ms latency, 70.00ms total
+
+======================================================================

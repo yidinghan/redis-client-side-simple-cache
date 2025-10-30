@@ -1,0 +1,49 @@
+======================================================================
+Redis GET Performance Benchmark
+Client-Side Caching vs No Caching
+======================================================================
+Configuration:
+  - Keys: 5 hot keys
+  - Payload size: 1024 bytes
+  - Warmup iterations: 100
+  - Benchmark iterations: 10,000
+======================================================================
+
+[ 1/2 ] Benchmarking WITHOUT client-side caching...
+Setting up test data...
+✓ Created 5 keys with 1024 byte payload
+
+  Warming up (100 iterations)...
+  Running benchmark (10,000 iterations)...
+  ✓ Complete
+
+[ 2/2 ] Benchmarking WITH client-side caching...
+Setting up test data...
+✓ Created 5 keys with 1024 byte payload
+
+  Warming up (100 iterations)...
+  Cache populated: 5 entries
+  Running benchmark (10,000 iterations)...
+  ✓ Complete
+
+======================================================================
+RESULTS
+======================================================================
+
+WITHOUT Client-Side Caching:
+  Total time:      2389.00ms
+  Operations/sec:  4,186 ops/s
+  Avg latency:     0.239ms
+
+WITH Client-Side Caching:
+  Total time:      11.00ms
+  Operations/sec:  909,091 ops/s
+  Avg latency:     0.001ms
+  Cache size:      5 entries
+
+PERFORMANCE IMPROVEMENT:
+  Speedup:         217.18x faster
+  Latency reduced: 99.5%
+  Time saved:      2378.00ms
+
+======================================================================

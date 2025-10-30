@@ -1,0 +1,23 @@
+{
+  "name": "redis-client-side-cache-demo",
+  "version": "1.0.0",
+  "description": "Demo of Redis 6+ client-side cache with read/write split using node-redis",
+  "main": "src/worker.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node test-connection.js",
+    "demo": "node src/demo.js",
+    "worker": "node src/worker.js",
+    "master": "node src/master.js",
+    "master:auto": "node src/master.js auto"
+  },
+  "dependencies": {
+    "redis": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

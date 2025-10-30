@@ -1,5 +1,7 @@
 # redis-simple-client-side-cache
 
+**Read this in other languages**: [English](docs/readmes/README.en.md) | [简体中文](README.md)
+
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/redis-simple-client-side-cache.svg)](https://www.npmjs.com/package/redis-simple-client-side-cache)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)

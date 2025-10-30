@@ -60,6 +60,24 @@ console.log('缓存大小:', cache.size());
 console.log('缓存统计:', cache.stats());
 ```
 
+## 🚀 性能基准测试
+
+在热点键场景下（5个键重复读取），客户端缓存显著提升性能：
+
+| 指标 | 无缓存 | 有缓存 | 提升 |
+|------|--------|--------|------|
+| **吞吐量** | 4,409 ops/s | 1,388,889 ops/s | **315x** |
+| **平均延迟** | 0.227ms | 0.001ms | **99.7%↓** |
+| **单轮耗时** (100K ops) | 22.68s | 0.07s | 节省 22.61s |
+
+> 基准测试配置：3轮 × 100,000次操作，5个热点键，1KB负载  
+> 运行测试：`node scripts/bench-get-performance.js`
+
+**关键发现**：
+- 🚀 缓存命中时延迟从 0.227ms 降至 0.001ms
+- ⚡ 每秒可处理 130万+ 次读操作（vs 无缓存的 4千次）
+- 💾 适用于读多写少场景，10:1+ 读写比时收益最大
+
 ## 📚 API 参考
 
 ### SimpleClientSideCache
@@ -128,27 +146,6 @@ new SimpleClientSideCache()
 3. **本地缓存**：首次 GET 将数据存储在本地 Map 中
 4. **失效通知**：当键变更时，Redis 推送失效消息
 5. **自动刷新**：下次 GET 获取最新数据并重新缓存
-
-## 🧪 测试
-
-包含全面的测试覆盖（**100% 行覆盖率，96% 分支覆盖率**）：
-
-1. ✅ 并发读写操作（3 个工作进程）
-2. ✅ 批量操作（MGET 及单键失效）
-3. ✅ 多种数据类型（String、Hash、JSON）
-4. ✅ 边缘情况（null、空字符串、1MB 负载、特殊字符 中文/emoji）
-5. ✅ 失效场景（SET、DEL、FLUSHDB）
-6. ✅ 内存泄漏检测（1000 次迭代）
-7. ✅ 错误处理（onError、onClose）
-8. ✅ API 完整性（stats、clear、invalidate）
-
-运行测试：
-```bash
-npm test                 # 所有测试
-npm run test:unit        # 基础功能
-npm run test:complex     # 复杂场景
-npm run test:coverage    # 测试 + 覆盖率报告
-```
 
 ## 📖 文档
 

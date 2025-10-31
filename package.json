@@ -44,7 +44,7 @@
     "performance",
     "minimal"
   ],
-  "author": "playdingnow <playdingnow@gmail.gf.com.cn>",
+  "author": "playdingnow <playdingnow@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "redis": "^4.0.0 || ^5.0.0"

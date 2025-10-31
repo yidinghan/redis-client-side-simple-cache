@@ -1,0 +1,16 @@
+Redis Client-Side Cache Benchmark - 1M Keys (Podman)
+====================================================
+Date: 2025-10-30T09:30:33.652Z
+Total Keys: 1,000,000
+Operations: 100,000
+
+Results:
+--------
+WITHOUT Cache: 4,380 ops/sec (22.83s)
+WITH Cache:    4,402 ops/sec (22.72s)
+Cache Size:    104,198 keys
+
+Performance:
+-----------
+Speedup:       1.01x
+Improvement:   0.5%

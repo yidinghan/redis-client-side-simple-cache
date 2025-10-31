@@ -1,6 +1,6 @@
 {
   "name": "@playding/redis-simple-csc",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "A minimal ~80-line client-side cache implementation for Redis with RESP3 protocol support",
   "main": "src/simple-cache.js",
   "type": "commonjs",

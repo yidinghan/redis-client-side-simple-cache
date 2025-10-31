@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-31
+
+### Added
+- Custom Map class support via `CacheMapClass` and `KeyMapClass` options
+- Type validation: classes must extend native Map
+- 8 new tests for custom Map functionality
+- Example file with LRUMap, LimitedMap, MonitoredMap implementations
+
+### Changed
+- Constructor accepts `options = { enableStat, CacheMapClass, KeyMapClass }`
+- Updated documentation (README.md, USAGE.md)
+
+### Notes
+- Backward compatible (defaults to native Map)
+- All 29 tests passing
+
 ## [0.2.0] - 2025-10-31
 
 ### Added

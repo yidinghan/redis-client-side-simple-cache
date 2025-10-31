@@ -112,14 +112,26 @@ new SimpleClientSideCache(options)
 **参数:**
 - `options` (Object, 可选)
   - `enableStat` (Boolean): 启用统计功能，默认 `false`
+  - `CacheMapClass` (Function): 自定义 Map 类用于缓存存储（必须继承自 native Map），默认 `Map`
+  - `KeyMapClass` (Function): 自定义 Map 类用于键到缓存键的映射（必须继承自 native Map），默认 `Map`
 
 **示例:**
 ```javascript
-// 默认 - 不启用统计
+// 默认 - 使用原生 Map
 const cache = new SimpleClientSideCache();
 
 // 启用统计
 const cache = new SimpleClientSideCache({ enableStat: true });
+
+// 使用自定义 Map 类
+class LRUMap extends Map {
+  // ... 自定义实现
+}
+
+const cache = new SimpleClientSideCache({ 
+  CacheMapClass: LRUMap,
+  KeyMapClass: LRUMap 
+});
 ```
 
 #### 方法

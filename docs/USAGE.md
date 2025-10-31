@@ -276,7 +276,121 @@ console.log(stats);
 - 开发/测试环境：建议启用，便于观察缓存效果
 - 生产环境：按需启用，如需监控缓存命中率时开启
 
-### 3. 失效事件追踪
+### 3. 自定义 Map 类
+
+你可以提供自定义的 Map 实现来扩展缓存功能，例如添加 LRU 淘汰、大小限制等。
+
+**基本用法：**
+```javascript
+// 自定义 Map 必须继承自 native Map
+class LimitedMap extends Map {
+  constructor(maxSize = 1000) {
+    super();
+    this.maxSize = maxSize;
+  }
+
+  set(key, value) {
+    // 达到上限时删除最早的条目
+    if (this.size >= this.maxSize) {
+      const firstKey = this.keys().next().value;
+      this.delete(firstKey);
+    }
+    return super.set(key, value);
+  }
+}
+
+// 使用自定义 Map
+const cache = new SimpleClientSideCache({ 
+  CacheMapClass: LimitedMap,   // 用于缓存值存储
+  KeyMapClass: LimitedMap       // 用于键到缓存键的映射
+});
+```
+
+**高级示例 - LRU Map：**
+```javascript
+class LRUMap extends Map {
+  constructor(maxSize = 1000) {
+    super();
+    this.maxSize = maxSize;
+  }
+
+  get(key) {
+    const value = super.get(key);
+    if (value !== undefined) {
+      // 重新插入以更新顺序
+      super.delete(key);
+      super.set(key, value);
+    }
+    return value;
+  }
+
+  set(key, value) {
+    // 如果键已存在，先删除以更新顺序
+    if (super.has(key)) {
+      super.delete(key);
+    }
+    
+    // 达到上限时删除最旧的条目
+    if (this.size >= this.maxSize) {
+      const firstKey = this.keys().next().value;
+      super.delete(firstKey);
+    }
+    
+    return super.set(key, value);
+  }
+}
+
+const cache = new SimpleClientSideCache({ 
+  CacheMapClass: LRUMap,
+  KeyMapClass: LRUMap,
+  enableStat: true
+});
+```
+
+**带监控的 Map：**
+```javascript
+class MonitoredMap extends Map {
+  constructor() {
+    super();
+    this.metrics = { sets: 0, deletes: 0, clears: 0 };
+  }
+
+  set(key, value) {
+    this.metrics.sets++;
+    return super.set(key, value);
+  }
+
+  delete(key) {
+    this.metrics.deletes++;
+    return super.delete(key);
+  }
+
+  clear() {
+    this.metrics.clears++;
+    return super.clear();
+  }
+}
+
+const cache = new SimpleClientSideCache({ 
+  CacheMapClass: MonitoredMap 
+});
+
+// 访问自定义 Map 的指标
+console.log(cache.cache.metrics);
+```
+
+**使用场景：**
+- **LRU/LFU 淘汰**：自动清理最少使用的条目
+- **大小限制**：防止内存无限增长
+- **监控统计**：追踪 Map 操作频率
+- **持久化**：将缓存保存到磁盘（需自定义实现）
+
+**注意事项：**
+- 自定义 Map 必须继承自 `Map`，否则会抛出 `TypeError`
+- `CacheMapClass` 和 `KeyMapClass` 可以使用不同的实现
+- 确保自定义 Map 的性能，避免影响缓存效率
+
+### 4. 失效事件追踪
 
 ```javascript
 let invalidationCount = 0;
@@ -295,7 +409,7 @@ cache.on('invalidate', (key) => {
 });
 ```
 
-### 4. 手动清空缓存
+### 5. 手动清空缓存
 
 ```javascript
 // 清空所有缓存（不会通知其他客户端）

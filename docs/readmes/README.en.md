@@ -110,14 +110,26 @@ new SimpleClientSideCache(options)
 **Parameters:**
 - `options` (Object, optional)
   - `enableStat` (Boolean): Enable statistics tracking, default `false`
+  - `CacheMapClass` (Function): Custom Map class for cache storage (must extend native Map), default `Map`
+  - `KeyMapClass` (Function): Custom Map class for key-to-cacheKeys mapping (must extend native Map), default `Map`
 
 **Examples:**
 ```javascript
-// Default - stats disabled
+// Default - native Map
 const cache = new SimpleClientSideCache();
 
 // Stats enabled
 const cache = new SimpleClientSideCache({ enableStat: true });
+
+// Custom Map class
+class LRUMap extends Map {
+  // ... custom implementation
+}
+
+const cache = new SimpleClientSideCache({ 
+  CacheMapClass: LRUMap,
+  KeyMapClass: LRUMap 
+});
 ```
 
 #### Methods

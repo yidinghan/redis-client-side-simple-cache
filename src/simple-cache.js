@@ -53,11 +53,25 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
    * Create a simple client-side cache instance
    * @param {Object} [options={}] - Cache options
    * @param {boolean} [options.enableStat=false] - Enable statistics tracking
+   * @param {Function} [options.CacheMapClass=Map] - Custom Map class for cache storage (must extend native Map)
+   * @param {Function} [options.KeyMapClass=Map] - Custom Map class for key-to-cacheKeys mapping (must extend native Map)
    */
   constructor(options = {}) {
     super();
-    this.cache = new Map();
-    this.keyToCacheKeys = new Map();
+    
+    const CacheMapClass = options.CacheMapClass || Map;
+    const KeyMapClass = options.KeyMapClass || Map;
+    
+    // Validate that provided classes extend Map
+    if (!(CacheMapClass.prototype instanceof Map || CacheMapClass === Map)) {
+      throw new TypeError('CacheMapClass must extend native Map');
+    }
+    if (!(KeyMapClass.prototype instanceof Map || KeyMapClass === Map)) {
+      throw new TypeError('KeyMapClass must extend native Map');
+    }
+    
+    this.cache = new CacheMapClass();
+    this.keyToCacheKeys = new KeyMapClass();
     this._initializeStatistics(options.enableStat);
   }
 

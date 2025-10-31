@@ -1,6 +1,6 @@
 {
   "name": "redis-simple-client-side-cache",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A minimal ~80-line client-side cache implementation for Redis with RESP3 protocol support",
   "main": "src/simple-cache.js",
   "type": "commonjs",
@@ -22,7 +22,10 @@
     "demo": "node examples/demo.js",
     "worker": "node examples/worker.js",
     "master": "node examples/master.js",
-    "master:auto": "node examples/master.js auto"
+    "master:auto": "node examples/master.js auto",
+    "prepublishOnly": "npm test",
+    "version": "npm run test && git add -A",
+    "postversion": "git push && git push --tags"
   },
   "repository": {
     "type": "git",

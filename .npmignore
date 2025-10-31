@@ -2,9 +2,8 @@
 test/
 examples/
 
-# Documentation (keep only essential docs in package)
-docs/audit-*.txt
-docs/audit-*.md
+# Documentation
+docs/
 
 # Development files
 .github/

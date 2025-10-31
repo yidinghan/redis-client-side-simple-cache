@@ -2,6 +2,14 @@
 
 const { ClientSideCacheProvider } = require('@redis/client/dist/lib/client/cache');
 
+/**
+ * Generate a unique cache key from Redis command arguments
+ * @param {Array<Buffer|string>} redisArgs - Redis command arguments
+ * @returns {string} Cache key in format "len1_len2_arg1_arg2"
+ * @example
+ * generateCacheKey(['user:1']) // "6_user:1"
+ * generateCacheKey(['user:1', 'user:2']) // "6_6_user:1_user:2"
+ */
 function generateCacheKey(redisArgs) {
   const tmp = new Array(redisArgs.length * 2);
   for (let i = 0; i < redisArgs.length; i++) {
@@ -30,8 +38,22 @@ function generateCacheKey(redisArgs) {
  *   'user:1' → Set(['6_user:1', '6_6_user:1_user:2'])
  *   'user:2' → Set(['6_6_user:1_user:2'])
  * 失效时 O(1) 查找 + O(k) 删除，精准高效
+ * 
+ * @extends ClientSideCacheProvider
+ * @fires SimpleClientSideCache#invalidate
+ * @example
+ * const cache = new SimpleClientSideCache({ enableStat: true });
+ * const client = redis.createClient({
+ *   RESP: 3,
+ *   clientSideCache: cache
+ * });
  */
 class SimpleClientSideCache extends ClientSideCacheProvider {
+  /**
+   * Create a simple client-side cache instance
+   * @param {Object} [options={}] - Cache options
+   * @param {boolean} [options.enableStat=false] - Enable statistics tracking
+   */
   constructor(options = {}) {
     super();
     this.cache = new Map();
@@ -39,6 +61,11 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     this._initializeStatistics(options.enableStat);
   }
 
+  /**
+   * Initialize statistics tracking
+   * @private
+   * @param {boolean} enableStat - Whether to enable statistics
+   */
   _initializeStatistics(enableStat) {
     if (enableStat) {
       this._stats = {
@@ -65,6 +92,15 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     }
   }
 
+  /**
+   * Handle cache lookup and storage for Redis commands
+   * @param {Object} client - Redis client instance
+   * @param {Object} parser - Command parser with redisArgs and keys
+   * @param {Function} fn - Function to execute Redis command
+   * @param {Function} [transformReply] - Optional reply transformation function
+   * @param {Object} [typeMapping] - Type mapping for reply transformation
+   * @returns {Promise<*>} Cached or fresh command result
+   */
   async handleCache(client, parser, fn, transformReply, typeMapping) {
     const cacheKey = generateCacheKey(parser.redisArgs);
     
@@ -108,10 +144,19 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     return structuredClone(value);
   }
 
+  /**
+   * Return the command to enable client tracking
+   * @returns {string[]} Redis command array
+   */
   trackingOn() {
     return ['CLIENT', 'TRACKING', 'ON'];
   }
 
+  /**
+   * Handle cache invalidation notifications from Redis
+   * @param {Buffer|null} key - Redis key to invalidate, or null for global flush
+   * @fires SimpleClientSideCache#invalidate
+   */
   invalidate(key) {
     if (key === null) {
       // 全局失效 (FLUSHDB 等)
@@ -140,11 +185,24 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     this.emit('invalidate', key);
   }
 
+  /**
+   * Clear all cached entries
+   */
   clear() {
     this.cache.clear();
     this.keyToCacheKeys.clear();
   }
 
+  /**
+   * Get cache statistics
+   * @returns {Object} Statistics object
+   * @property {number} hitCount - Number of cache hits
+   * @property {number} missCount - Number of cache misses
+   * @property {number} loadSuccessCount - Number of successful loads from Redis
+   * @property {number} loadFailureCount - Number of failed loads from Redis
+   * @property {number} totalLoadTime - Total time spent loading from Redis (ms)
+   * @property {number} evictionCount - Number of cache entries evicted
+   */
   stats() {
     if (this._stats) {
       return { ...this._stats };
@@ -159,17 +217,35 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     };
   }
 
+  /**
+   * Handle Redis client errors by clearing cache
+   */
   onError() {
     this.clear();
   }
 
+  /**
+   * Handle Redis client closure by clearing cache
+   */
   onClose() {
     this.clear();
   }
 
+  /**
+   * Get the number of cached entries
+   * @returns {number} Number of entries in cache
+   */
   size() {
     return this.cache.size;
   }
 }
+
+/**
+ * Invalidate event
+ * @event SimpleClientSideCache#invalidate
+ * @type {Buffer|null}
+ * @description Emitted when cache entries are invalidated. 
+ * The key is a Buffer for specific key invalidations, or null for global flush.
+ */
 
 module.exports = { SimpleClientSideCache };

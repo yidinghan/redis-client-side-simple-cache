@@ -36,8 +36,11 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     super();
     this.cache = new Map();
     this.keyToCacheKeys = new Map();
-    
-    if (options.enableStat) {
+    this._initializeStatistics(options.enableStat);
+  }
+
+  _initializeStatistics(enableStat) {
+    if (enableStat) {
       this._stats = {
         hitCount: 0,
         missCount: 0,

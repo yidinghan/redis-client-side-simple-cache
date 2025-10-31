@@ -13,9 +13,11 @@
 - 无 TTL 过期
 - 无 maxEntries 限制
 - 无 LRU/FIFO 淘汰策略
-- 无统计信息
 - 无 Promise 缓存
 - 无任何嵌套逻辑
+
+✅ **可选功能**：
+- 统计信息（通过 `enableStat: true` 启用）
 
 ## 实现方式
 

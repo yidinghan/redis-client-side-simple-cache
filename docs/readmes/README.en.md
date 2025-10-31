@@ -56,6 +56,28 @@ const value3 = await client.get('mykey'); // Fetches latest data
 
 console.log('Cache size:', cache.size());
 console.log('Cache stats:', cache.stats());
+
+// Enable statistics example
+const cacheWithStats = new SimpleClientSideCache({ enableStat: true });
+const client2 = redis.createClient({
+  socket: { host: 'localhost', port: 6379 },
+  RESP: 3,
+  clientSideCache: cacheWithStats
+});
+
+await client2.connect();
+await client2.get('key1'); // miss
+await client2.get('key1'); // hit
+
+console.log(cacheWithStats.stats());
+// {
+//   hitCount: 1,
+//   missCount: 1,
+//   loadSuccessCount: 1,
+//   loadFailureCount: 0,
+//   totalLoadTime: 0.5,
+//   evictionCount: 0
+// }
 ```
 
 ## 🚀 Performance Benchmarks
@@ -82,14 +104,32 @@ In hot key scenarios (5 keys repeatedly read), client-side caching dramatically 
 
 #### Constructor
 ```javascript
-new SimpleClientSideCache()
+new SimpleClientSideCache(options)
 ```
-No configuration needed - works out of the box.
+
+**Parameters:**
+- `options` (Object, optional)
+  - `enableStat` (Boolean): Enable statistics tracking, default `false`
+
+**Examples:**
+```javascript
+// Default - stats disabled
+const cache = new SimpleClientSideCache();
+
+// Stats enabled
+const cache = new SimpleClientSideCache({ enableStat: true });
+```
 
 #### Methods
 
 - **`size()`**: Returns the number of cached entries
-- **`stats()`**: Returns cache statistics object
+- **`stats()`**: Returns cache statistics object (actual values when enabled, zeros when disabled)
+  - `hitCount`: Number of cache hits
+  - `missCount`: Number of cache misses
+  - `loadSuccessCount`: Number of successful loads
+  - `loadFailureCount`: Number of failed loads
+  - `totalLoadTime`: Total load time in milliseconds
+  - `evictionCount`: Number of cache evictions
 - **`clear()`**: Clears all cache entries
 - **`on('invalidate', callback)`**: Listen for cache invalidation events
 

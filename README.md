@@ -58,6 +58,28 @@ const value3 = await client.get('mykey'); // 获取最新数据
 
 console.log('缓存大小:', cache.size());
 console.log('缓存统计:', cache.stats());
+
+// 启用统计功能示例
+const cacheWithStats = new SimpleClientSideCache({ enableStat: true });
+const client2 = redis.createClient({
+  socket: { host: 'localhost', port: 6379 },
+  RESP: 3,
+  clientSideCache: cacheWithStats
+});
+
+await client2.connect();
+await client2.get('key1'); // miss
+await client2.get('key1'); // hit
+
+console.log(cacheWithStats.stats());
+// {
+//   hitCount: 1,
+//   missCount: 1,
+//   loadSuccessCount: 1,
+//   loadFailureCount: 0,
+//   totalLoadTime: 0.5,
+//   evictionCount: 0
+// }
 ```
 
 ## 🚀 性能基准测试
@@ -84,14 +106,32 @@ console.log('缓存统计:', cache.stats());
 
 #### 构造函数
 ```javascript
-new SimpleClientSideCache()
+new SimpleClientSideCache(options)
 ```
-无需配置 - 开箱即用。
+
+**参数:**
+- `options` (Object, 可选)
+  - `enableStat` (Boolean): 启用统计功能，默认 `false`
+
+**示例:**
+```javascript
+// 默认 - 不启用统计
+const cache = new SimpleClientSideCache();
+
+// 启用统计
+const cache = new SimpleClientSideCache({ enableStat: true });
+```
 
 #### 方法
 
 - **`size()`**: 返回缓存条目数量
-- **`stats()`**: 返回缓存统计对象
+- **`stats()`**: 返回缓存统计对象 (启用统计时返回实际值，否则返回零值)
+  - `hitCount`: 缓存命中次数
+  - `missCount`: 缓存未命中次数
+  - `loadSuccessCount`: 成功加载次数
+  - `loadFailureCount`: 加载失败次数
+  - `totalLoadTime`: 总加载时间 (毫秒)
+  - `evictionCount`: 缓存驱逐次数
 - **`clear()`**: 清除所有缓存条目
 - **`on('invalidate', callback)`**: 监听缓存失效事件
 

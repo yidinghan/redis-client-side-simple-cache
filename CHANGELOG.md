@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-10-31
+
+### Added
+- Optional statistics support via `enableStat` constructor option
+- Track hit/miss, load success/failure, load time, evictions
+- Zero-overhead closure pattern (1.14ns/op when disabled, 642% faster than if-check)
+- Comprehensive test suite for statistics (`test/test-stats.js`)
+- Performance benchmark script (`scripts/bench-stat-methods.js`)
+
+### Changed
+- Constructor now accepts `options = { enableStat: boolean }`
+- `stats()` returns actual values when enabled, zeros when disabled
+
+### Notes
+- Fully backward compatible (stats disabled by default)
+- Line count: 127 → 172 lines (+45)
+
 ## [0.1.0] - 2025-10-31
 
 ### 🎉 Initial Release

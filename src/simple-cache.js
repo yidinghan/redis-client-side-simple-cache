@@ -32,20 +32,59 @@ function generateCacheKey(redisArgs) {
  * 失效时 O(1) 查找 + O(k) 删除，精准高效
  */
 class SimpleClientSideCache extends ClientSideCacheProvider {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.cache = new Map();
     this.keyToCacheKeys = new Map();
+    
+    if (options.enableStat) {
+      this._stats = {
+        hitCount: 0,
+        missCount: 0,
+        loadSuccessCount: 0,
+        loadFailureCount: 0,
+        totalLoadTime: 0,
+        evictionCount: 0
+      };
+      this._incHit = () => this._stats.hitCount++;
+      this._incMiss = () => this._stats.missCount++;
+      this._incLoadSuccess = () => this._stats.loadSuccessCount++;
+      this._incLoadFailure = () => this._stats.loadFailureCount++;
+      this._addLoadTime = (time) => this._stats.totalLoadTime += time;
+      this._incEviction = (count = 1) => this._stats.evictionCount += count;
+    } else {
+      this._incHit = () => {};
+      this._incMiss = () => {};
+      this._incLoadSuccess = () => {};
+      this._incLoadFailure = () => {};
+      this._addLoadTime = () => {};
+      this._incEviction = () => {};
+    }
   }
 
   async handleCache(client, parser, fn, transformReply, typeMapping) {
     const cacheKey = generateCacheKey(parser.redisArgs);
     
     if (this.cache.has(cacheKey)) {
+      this._incHit();
       return structuredClone(this.cache.get(cacheKey));
     }
 
-    let reply = await fn();
+    this._incMiss();
+    
+    const startTime = process.hrtime.bigint();
+    let reply;
+    try {
+      reply = await fn();
+      this._incLoadSuccess();
+    } catch (err) {
+      this._incLoadFailure();
+      throw err;
+    } finally {
+      const endTime = process.hrtime.bigint();
+      const elapsed = Number(endTime - startTime) / 1e6; // Convert to ms
+      this._addLoadTime(elapsed);
+    }
 
     let value = transformReply 
       ? transformReply(reply, parser.preserve, typeMapping)
@@ -73,8 +112,10 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
   invalidate(key) {
     if (key === null) {
       // 全局失效 (FLUSHDB 等)
+      const evictedCount = this.cache.size;
       this.cache.clear();
       this.keyToCacheKeys.clear();
+      this._incEviction(evictedCount);
       this.emit('invalidate', key);
       return;
     }
@@ -85,10 +126,12 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
     if (cacheKeys) {
       // 删除所有包含此 Redis key 的缓存条目
       // 例如: 'user:1' 失效会删除 GET('user:1') 和 MGET(['user:1','user:2']) 的缓存
+      const evictedCount = cacheKeys.size;
       for (const cacheKey of cacheKeys) {
         this.cache.delete(cacheKey);
       }
       this.keyToCacheKeys.delete(keyStr);
+      this._incEviction(evictedCount);
     }
     
     this.emit('invalidate', key);
@@ -100,6 +143,9 @@ class SimpleClientSideCache extends ClientSideCacheProvider {
   }
 
   stats() {
+    if (this._stats) {
+      return { ...this._stats };
+    }
     return {
       hitCount: 0,
       missCount: 0,

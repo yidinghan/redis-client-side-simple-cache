@@ -3,7 +3,7 @@
 **Read this in other languages**: [English](docs/readmes/README.en.md) | [简体中文](README.md)
 
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
-[![npm version](https://img.shields.io/npm/v/redis-simple-client-side-cache.svg)](https://www.npmjs.com/package/redis-simple-client-side-cache)
+[![npm version](https://img.shields.io/npm/v/@playding/redis-simple-csc.svg)](https://www.npmjs.com/package/@playding/redis-simple-csc)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
 
@@ -22,13 +22,13 @@
 ## 📦 安装
 
 ```bash
-npm install redis-simple-client-side-cache redis
+npm install @playding/redis-simple-csc redis
 ```
 
 ## 🚀 快速开始
 
 ```javascript
-const { SimpleClientSideCache } = require('redis-simple-client-side-cache');
+const { SimpleClientSideCache } = require('@playding/redis-simple-csc');
 const redis = require('redis');
 
 // 创建缓存实例

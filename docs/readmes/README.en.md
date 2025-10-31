@@ -1,7 +1,7 @@
 # redis-simple-client-side-cache
 
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
-[![npm version](https://img.shields.io/npm/v/redis-simple-client-side-cache.svg)](https://www.npmjs.com/package/redis-simple-client-side-cache)
+[![npm version](https://img.shields.io/npm/v/@playding/redis-simple-csc.svg)](https://www.npmjs.com/package/@playding/redis-simple-csc)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
 
@@ -20,13 +20,13 @@ A minimalist Redis client-side cache implementation with ~80 lines of core code,
 ## 📦 Installation
 
 ```bash
-npm install redis-simple-client-side-cache redis
+npm install @playding/redis-simple-csc redis
 ```
 
 ## 🚀 Quick Start
 
 ```javascript
-const { SimpleClientSideCache } = require('redis-simple-client-side-cache');
+const { SimpleClientSideCache } = require('@playding/redis-simple-csc');
 const redis = require('redis');
 
 // Create cache instance

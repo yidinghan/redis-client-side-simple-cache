@@ -10,9 +10,7 @@
   "files": [
     "src/simple-cache.js",
     "README.md",
-    "LICENSE",
-    "docs/SIMPLE-CACHE.md",
-    "docs/USAGE.md"
+    "LICENSE"
   ],
   "scripts": {
     "test": "node --test test/*.js",

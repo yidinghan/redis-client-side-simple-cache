@@ -1,4 +1,4 @@
-# redis-simple-client-side-cache
+# @playding/redis-simple-csc
 
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/@playding/redis-simple-csc.svg)](https://www.npmjs.com/package/@playding/redis-simple-csc)

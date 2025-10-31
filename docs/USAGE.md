@@ -17,13 +17,13 @@
 ### 安装
 
 ```bash
-npm install redis-simple-client-side-cache redis
+npm install @playding/redis-simple-csc redis
 ```
 
 ### 最小示例
 
 ```javascript
-const { SimpleClientSideCache } = require('redis-simple-client-side-cache');
+const { SimpleClientSideCache } = require('@playding/redis-simple-csc');
 const redis = require('redis');
 
 const cache = new SimpleClientSideCache();
@@ -45,7 +45,7 @@ console.log('缓存大小:', cache.size());
 ### 1. 创建缓存客户端
 
 ```javascript
-const { SimpleClientSideCache } = require('redis-simple-client-side-cache');
+const { SimpleClientSideCache } = require('@playding/redis-simple-csc');
 const redis = require('redis');
 
 // 创建缓存实例
@@ -479,7 +479,7 @@ console.log('缓存增长:', sizeAfter - sizeBefore); // 应该是 1
 ### 2. 生产环境模板
 
 ```javascript
-const { SimpleClientSideCache } = require('redis-simple-client-side-cache');
+const { SimpleClientSideCache } = require('@playding/redis-simple-csc');
 const redis = require('redis');
 
 class RedisService {

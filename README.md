@@ -1,4 +1,4 @@
-# redis-simple-client-side-cache
+# @playding/redis-simple-csc
 
 **Read this in other languages**: [English](docs/readmes/README.en.md) | [简体中文](README.md)
 

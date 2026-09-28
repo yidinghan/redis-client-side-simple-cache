@@ -5,9 +5,9 @@
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/@playding/redis-simple-csc.svg)](https://www.npmjs.com/package/@playding/redis-simple-csc)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.19.0-brightgreen)](https://nodejs.org/)
 
-一个极简的 Redis 客户端缓存实现，核心代码仅 ~80 行，支持 RESP3 协议。继承自 `node-redis` v4+ 的 `ClientSideCacheProvider`，提供本地 Map 缓存、GET/SET 操作和自动失效处理。
+一个极简的 Redis 客户端缓存实现，核心代码仅 ~80 行，支持 RESP3 协议。继承自 `node-redis` 5.12.1 的 `ClientSideCacheProvider`，提供本地 Map 缓存、GET/SET 操作和自动失效处理。
 
 ## ✨ 核心特性
 
@@ -17,13 +17,17 @@
 - 🛡️ **结构化克隆**：返回深拷贝，避免引用共享问题
 - 📡 **事件驱动**：为所有缓存变更发出 `invalidate` 事件
 - 🧪 **完善测试**：6 个综合测试场景，覆盖边缘情况和内存泄漏检测
-- 🔌 **简单集成**：与 `node-redis` v4+ 无缝配合
+- 🔌 **简单集成**：与 `node-redis` 5.12.1 无缝配合
 
 ## 📦 安装
 
 ```bash
-npm install @playding/redis-simple-csc redis
+npm install @playding/redis-simple-csc redis@5.12.1
 ```
+
+0.4.0 保留原根入口 API，但运行环境收窄为 Node.js >=18.19.0、`redis@5.12.1`。
+升级包前先升级运行环境；尚未迁移的项目继续使用原有锁定版本。
+原根入口的 provider 与调用方 Redis client 应使用同一份 `@redis/client`。
 
 ## 🚀 快速开始
 
@@ -82,7 +86,60 @@ console.log(cacheWithStats.stats());
 // }
 ```
 
+## Redis Cluster 有界缓存
+
+这个入口提供 **Redis Cluster 上的有界热点缓存**。Cluster 连接由 `node-redis`
+提供；本包增加容量约束，并让淘汰同步回收反向引用，避免只限制主缓存却保留旧引用。
+
+| 行为 | 根入口 `SimpleClientSideCache` | `/cluster` 的 `createCachedCluster` |
+|---|---|---|
+| 接入方式 | 创建 provider，由调用方传给 `createClient` | 同时创建 Cluster client 和匹配的 pooled provider |
+| 容量与淘汰 | 默认无界，可注入自定义 Map；两张 Map 没有联动淘汰 | 必填 `maxEntries`，内建 LRU，淘汰同步清理反向引用 |
+| 失效后的在途读取 | 完成后仍可能重新写入缓存 | 旧响应可以返回调用方，但不能重新填入缓存 |
+| 连接生命周期 | 已有 `onError` / `onClose` 清缓存 | 复用 node-redis 的 Cluster 生命周期，包括拓扑重发现清理 |
+
+独立入口保留原 API 和自定义 Map 扩展，同时满足 Cluster 对 pooled provider 的要求。
+当前新增的容量能力只通过 `/cluster` 提供；原根入口实现不变。
+
+```javascript
+const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
+
+const { client, cache } = createCachedCluster({
+  clusterOptions: {
+    rootNodes: [{ url: 'redis://127.0.0.1:16379' }]
+  },
+  cacheOptions: { maxEntries: 10000 }
+});
+
+client.on('error', console.error);
+await client.connect();
+const members = await client.sMembers('example:key');
+console.log(cache.size(), cache.stats());
+await client.close();
+```
+
+factory 返回尚未连接的客户端；调用方负责连接和关闭。`maxEntries` 必须是正安全整数，
+包含空结果及未完成读取。使用 RESP3、LRU、`ttl=0` 和 ordinary tracking；淘汰同步
+回收反向引用。连接关闭、错误或拓扑重发现会清缓存，失效前的在途读取不会重新填入。
+`cacheOptions.recordStats` 可沿用 node-redis 的统计开关。
+示例容量不代表生产推荐值；条目数上限不是进程内存字节上限。失效前的在途请求
+仍可能向调用方返回旧响应，但该响应不能重新填入缓存。
+
+本地可用 `bash scripts/test-cluster-env.sh up` 启动隔离的三主节点 Cluster，
+用 `bash scripts/test-cluster-env.sh down` 清理。默认使用 Docker，可设置
+`CONTAINER_ENGINE=podman` 和 `REDIS_IMAGE`；完整 suite 还需要独立的 `localhost:6379`。
+
+真实 Cluster 验证使用独立测试实例；旧 suite 会清空 `localhost:6379` 的测试数据库：
+
+```bash
+REDIS_CLUSTER_URLS=redis://127.0.0.1:16379,redis://127.0.0.1:16380,redis://127.0.0.1:16381 npm test
+```
+
+仅验证新子路径可运行 `npm run test:cluster`，同样需要上述环境变量。
+
 ## 🚀 性能基准测试
+
+以下历史结果来自根入口 `SimpleClientSideCache` 与单节点 Redis，不代表 `/cluster` 的性能。
 
 在热点键场景下（5个键重复读取），客户端缓存显著提升性能：
 
@@ -207,9 +264,9 @@ const cache = new SimpleClientSideCache({
 
 ## 🔧 依赖要求
 
-- Node.js >= 18
+- Node.js >= 18.19.0
 - Redis >= 6.0（支持 RESP3 和客户端缓存）
-- `redis` 包 v4.0.0 或 v5.0.0+
+- `redis` 包 5.12.1
 
 ## 📄 许可证
 
@@ -217,4 +274,4 @@ ISC 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
 ## 🙏 致谢
 
-基于 [node-redis](https://github.com/redis/node-redis) v4+ 构建。
+基于 [node-redis](https://github.com/redis/node-redis) 5.12.1 构建。

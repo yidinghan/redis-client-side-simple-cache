@@ -1,14 +1,16 @@
 {
   "name": "@playding/redis-simple-csc",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A minimal ~80-line client-side cache implementation for Redis with RESP3 protocol support",
   "main": "src/simple-cache.js",
   "type": "commonjs",
   "exports": {
-    ".": "./src/simple-cache.js"
+    ".": "./src/simple-cache.js",
+    "./cluster": "./src/cluster.js"
   },
   "files": [
     "src/simple-cache.js",
+    "src/cluster.js",
     "README.md",
     "LICENSE"
   ],
@@ -16,6 +18,7 @@
     "test": "node --test test/*.js",
     "test:unit": "node --test test/test-simple-cache.js",
     "test:complex": "node --test test/test-complex-scenarios.js",
+    "test:cluster": "node --test test/test-cluster.js",
     "test:coverage": "node --test --experimental-test-coverage test/*.js",
     "demo": "node examples/demo.js",
     "worker": "node examples/worker.js",
@@ -48,12 +51,12 @@
   "author": "playdingnow <playdingnow@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "redis": "^4.0.0 || ^5.0.0"
+    "redis": "5.12.1"
   },
   "peerDependencies": {
-    "redis": "^4.0.0 || ^5.0.0"
+    "redis": "5.12.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.19.0"
   }
 }

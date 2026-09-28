@@ -12,6 +12,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      REDIS_CLUSTER_URLS: redis://127.0.0.1:16379,redis://127.0.0.1:16380,redis://127.0.0.1:16381
     permissions:
       contents: read
       id-token: write
@@ -38,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Start Redis Cluster
+        run: scripts/test-cluster-env.sh up
+
       - name: Run tests
         run: npm test
         env:
@@ -48,3 +53,7 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Stop Redis Cluster
+        if: always()
+        run: scripts/test-cluster-env.sh down

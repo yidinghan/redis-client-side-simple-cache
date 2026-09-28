@@ -3,9 +3,9 @@
 [![Run Tests](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml/badge.svg)](https://github.com/yidinghan/redis-client-side-simple-cache/actions/workflows/test.yml)
 [![npm version](https://img.shields.io/npm/v/@playding/redis-simple-csc.svg)](https://www.npmjs.com/package/@playding/redis-simple-csc)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.19.0-brightgreen)](https://nodejs.org/)
 
-A minimalist Redis client-side cache implementation with ~80 lines of core code, supporting RESP3 protocol. Extends `ClientSideCacheProvider` from `node-redis` v4+, providing local Map caching, GET/SET operations, and automatic invalidation handling.
+A minimalist Redis client-side cache implementation with ~80 lines of core code, supporting RESP3 protocol. Extends `ClientSideCacheProvider` from `node-redis` 5.12.1, providing local Map caching, GET/SET operations, and automatic invalidation handling.
 
 ## ✨ Core Features
 
@@ -15,13 +15,17 @@ A minimalist Redis client-side cache implementation with ~80 lines of core code,
 - 🛡️ **Structured Cloning**: Returns deep copies to avoid reference sharing issues
 - 📡 **Event-Driven**: Emits `invalidate` events for all cache changes
 - 🧪 **Comprehensive Tests**: 6 test scenarios covering edge cases and memory leak detection
-- 🔌 **Simple Integration**: Works seamlessly with `node-redis` v4+
+- 🔌 **Simple Integration**: Works seamlessly with `node-redis` 5.12.1
 
 ## 📦 Installation
 
 ```bash
-npm install @playding/redis-simple-csc redis
+npm install @playding/redis-simple-csc redis@5.12.1
 ```
+
+Version 0.4.0 preserves the root API but requires Node.js >=18.19.0 and `redis@5.12.1`.
+Upgrade the runtime before upgrading this package; keep the previous locked version otherwise.
+The root provider and the caller's Redis client must resolve the same `@redis/client` instance.
 
 ## 🚀 Quick Start
 
@@ -80,7 +84,63 @@ console.log(cacheWithStats.stats());
 // }
 ```
 
+## Bounded Redis Cluster cache
+
+This entry point provides **bounded hot-data caching for Redis Cluster**. node-redis
+provides the Cluster connection; this package bounds entries and removes their reverse
+references on eviction, so limiting the main cache does not leave old references behind.
+
+| Behavior | Root `SimpleClientSideCache` | `/cluster` `createCachedCluster` |
+|---|---|---|
+| Integration | Provider passed by the caller to `createClient` | Creates the Cluster client and matching pooled provider together |
+| Capacity and eviction | Unbounded by default; custom Maps do not coordinate eviction between the two maps | Required `maxEntries`, built-in LRU and reverse-reference cleanup |
+| In-flight reads after invalidation | A completed response can refill the cache | A stale response may reach its caller but cannot refill the cache |
+| Connection lifecycle | Already clears on `onError` / `onClose` | Reuses node-redis Cluster lifecycle handling, including topology rediscovery |
+
+The separate entry point preserves the root API and custom Map extension while meeting
+Cluster's pooled-provider requirement. The new bounded behavior is currently exposed
+only through `/cluster`; the root implementation is unchanged.
+
+```javascript
+const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
+
+const { client, cache } = createCachedCluster({
+  clusterOptions: {
+    rootNodes: [{ url: 'redis://127.0.0.1:16379' }]
+  },
+  cacheOptions: { maxEntries: 10000 }
+});
+
+client.on('error', console.error);
+await client.connect();
+const members = await client.sMembers('example:key');
+console.log(cache.size(), cache.stats());
+await client.close();
+```
+
+The factory returns a disconnected client; the caller owns its lifecycle. `maxEntries`
+must be a positive safe integer and includes empty results and in-flight reads.
+The cache uses RESP3, LRU, `ttl=0` and ordinary tracking. Eviction also removes reverse
+references. Connection errors, closure and topology rediscovery clear cached data.
+Invalidated in-flight responses may still reach their caller but cannot refill the cache.
+`cacheOptions.recordStats` follows node-redis. The example capacity is not a production
+recommendation, and an entry limit is not a process-memory byte limit.
+
+Start an isolated three-primary Cluster with `bash scripts/test-cluster-env.sh up` and
+remove it with `bash scripts/test-cluster-env.sh down`. Docker is the default; override
+`CONTAINER_ENGINE=podman` or `REDIS_IMAGE` when needed. The full suite also needs a
+dedicated standalone Redis at `localhost:6379`, whose database the legacy tests flush.
+
+```bash
+REDIS_CLUSTER_URLS=redis://127.0.0.1:16379,redis://127.0.0.1:16380,redis://127.0.0.1:16381 npm test
+```
+
+Use `npm run test:cluster` with the same environment to run only the Cluster suite.
+
 ## 🚀 Performance Benchmarks
+
+These historical results use the root `SimpleClientSideCache` with standalone Redis;
+they do not measure `/cluster` performance.
 
 In hot key scenarios (5 keys repeatedly read), client-side caching dramatically improves performance:
 
@@ -205,9 +265,9 @@ Based on Redis RESP3 protocol client-side caching:
 
 ## 🔧 Requirements
 
-- Node.js >= 18
+- Node.js >= 18.19.0
 - Redis >= 6.0 (with RESP3 and client-side caching support)
-- `redis` package v4.0.0 or v5.0.0+
+- `redis` package 5.12.1
 
 ## 📄 License
 
@@ -215,4 +275,4 @@ ISC License - see [LICENSE](../../LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-Built on top of [node-redis](https://github.com/redis/node-redis) v4+.
+Built on top of [node-redis](https://github.com/redis/node-redis) 5.12.1.

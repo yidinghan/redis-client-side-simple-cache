@@ -15,7 +15,7 @@ You are an expert in Redis client-side caching with the `SimpleClientSideCache` 
 - Structured cloning (no reference sharing)
 - Event-driven invalidation (key-specific and global)
 - The root implementation has no TTL, LRU, or size limits (by design)
-- The `/cluster` factory uses RESP3, LRU, ttl=0 and a required positive maxEntries limit
+- The `/cluster` factory uses RESP3 and ttl=0, without entry limits, LRU or custom Map injection
 
 ## Installation
 
@@ -39,7 +39,7 @@ const client = redis.createClient({
 ## Files
 
 - `src/simple-cache.js` - Existing root implementation
-- `src/cluster.js` - Bounded Cluster factory; no business-specific logic
+- `src/cluster.js` - On-demand Cluster cache factory; no business-specific logic
 - `test/*.js` - Test suites
 - `docs/USAGE.md` - Usage guide
 - `README.md` - Overview

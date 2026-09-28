@@ -1,20 +1,42 @@
 # 0.4.0 Cluster 缓存交付与验证
 
-日期：2026-09-28。状态：需求已收敛为不设缓存容量上限；当前实现待调整，不作为可发布版本。
+日期：2026-09-28。状态：已删除限容和 LRU；源码及安装产物验证通过，未发布 npm。
 
-## 最新范围决议
+## 当前实现与边界
 
-- 不要求 `BoundedClusterCache`、强制正值 `maxEntries`、自行维护 LRU 或容量选型；需要缓存多少就缓存多少，实际出现问题后再评估。
-- 按需缓存不等于固定容量。不把取消限容改写成合并两套缓存实现或另造通用缓存框架。
-- 盘点基线为本仓库 `0222d30`：13 个文件，新增 729 行、删除 62 行。其中运行时新增 116 行；新增测试 230 行、环境脚本 70 行，其他为文档、依赖和 CI。原根入口实现未改。
-- node-redis 5.12.1 已提供 Cluster CSC；`maxEntries:0` 表示不按数量淘汰，`ttl:0` 表示不按时间过期。优先验证原生接入，不能把自建有界存储当作 Cluster 必需条件。
-- 容量淘汰实现、容量断言及文档中的强制有界合同应撤销；跨节点读取、writer 更新后失效及连接恢复仍须验证。
-- 当前自实现还包含清空时使在途条目失效、禁用期间拒绝回填、联动清理反向引用等差异；这些是否需要保留，应由实际使用路径的问题证据决定，不以现有测试断言自动确立需求。
-- 本次只做范围盘点、记录决议，未修改运行时、删除测试或重新执行性能测试。以下是旧候选实现的历史验证，不能视为新范围已实现或验收通过。
+- Redis 读取后才缓存，使用 tracking 失效；没有容量上限、LRU 重排或 TTL，按需缓存不保证内存永久有界。
+- 删除强制 `maxEntries` 校验、容量淘汰、命中重排、`deleteOldest` 和容量专属测试；内部类改名 `ClusterCache`，运行时从 116 行减至 102 行。
+- 保留反向引用清理、在途读取失效、禁用期间拒绝回填及断线恢复。工厂接口与返回值不变，未增加新策略或替换 provider。
+- 原 `src/simple-cache.js` 与 main `43bb01e` 完全一致，保留 `CacheMapClass/KeyMapClass`；新 Cluster 入口仍使用原生 Map，不提供存储注入。
+- 原开发分支远端已删除，main 仍为 `43bb01e`；本次从本地 `de52591` 新建 `feat/cluster-cache-no-limits`，保留此前代码和历史。
+- Node >=18.19.0、redis 5.12.1 的支持范围不变；本轮不宣称应用内存收益或完整事件吞吐已经验证。
+
+## 本轮验证
+
+使用专用 Redis 7.0.4：standalone 6379，三主 Cluster 16379/16380/16381。
+
+| 测试对象 | Node | 结果 |
+|---|---|---|
+| 仓库源码完整 suite | 24.14.0 | 36 passed，0 failed，0 skipped |
+| 仓库源码完整 suite | 18.19.0 | 36 passed，0 failed，0 skipped |
+| 新 tarball 安装后的公开入口完整 suite | 24.14.0 | 36 passed，0 failed，0 skipped |
+| 新 tarball 安装后的公开入口完整 suite | 18.19.0 | 36 passed，0 failed，0 skipped |
+
+较历史候选少一项容量淘汰场景；跨节点空/非空 SMEMBERS、独立 writer 失效、重复 key MGET、晚回包、真实 MOVED、关闭重连和 tracking 连接被断开后的恢复仍全部通过。
+全新临时 npm 项目安装 tarball 和 redis@5.12.1，测试改为导入两个公开入口后经 `npm test` 执行。`npm ls` 确认 client/provider 共用 @redis/client 5.12.1；安装后的五个文件与工作区逐字节一致。
+
+日志：`/private/tmp/cache-minimal-node24.log`、`/private/tmp/cache-minimal-node18.log`、`/private/tmp/cache-minimal-pack-node24.log`、`/private/tmp/cache-minimal-pack-node18.log`。
+产物：`/private/tmp/csc-minimal-fgghv6xx/pack/playding-redis-simple-csc-0.4.0.tgz`。
+SHA-512 integrity：`sha512-Mek6NnPyRZgWtD82jnTeMVpT93pBLOsRdiT8Jz+eLEIstfC1M96O3k55IMB4UNzwL07zyO7osdm19MNKxdkOpQ==`。
+
+源码与测试语法检查、`git diff --check` 通过；仓库没有 lint script，未引入新工具。独立 code review 与 rubber duck 均通过；已核对运行时删减、测试日志、安装产物与文档证据，无必须修复项。
+版本仍为候选 0.4.0；未发布、未打 tag，不沿用下方历史产物摘要。
 
 ## 历史候选记录
 
-## 变更与边界
+以下保留删减前实现与测试事实，不作为当前容量合同或验证结果。
+
+### 变更与边界
 
 从 `main`（43bb01e）创建 `feat/bounded-cluster-cache`，为本包增加有界 Cluster 缓存。
 新增 `/cluster` 的 `createCachedCluster`，只管理有界 LRU 条目及反向引用；RESP3、
@@ -28,7 +50,7 @@ tracking、命令处理和连接恢复复用 node-redis。原 `src/simple-cache.
 TTL 策略、第二层缓存、codec、clone 优化或新的重试框架。maxEntries 限制条目数，
 不是进程 RSS 上限；本轮验证不包含应用进程的 RSS 收益或业务端到端吞吐。
 
-## 本轮验证
+### 本轮验证
 
 隔离 Redis 7.0.4：standalone 6379，三主 Cluster 16379/16380/16381。
 
@@ -52,7 +74,7 @@ bash -n、git diff --check 通过。仓库没有 lint script 或 ESLint 配置�
 独立 code review 和 rubber duck 均未发现必须修复的问题；审计同时核对源码及安装产物证据。
 GitHub Actions 配置已更新，本轮执行证据来自本地，尚未声称远程 CI 已通过。
 
-## 复现
+### 复现
 
 完整测试会清空 localhost:6379，必须使用专用实例。以下从仓库根目录运行，
 CONTAINER_ENGINE 可改为 podman，REDIS_IMAGE 可指定已有镜像。
@@ -76,7 +98,7 @@ bash scripts/test-cluster-env.sh down
 安装新 tarball 和 redis@5.12.1，然后带同一 REDIS_CLUSTER_URLS 执行 npm test。
 不要把源码测试通过当作安装产物通过；Cluster 场景不得跳过。
 
-## 发布交接
+### 发布交接
 
 0.4.0 为候选版本，本轮 registry 查询仍只有至 0.3.0 的已发布版本。
 补充入口对照说明后重新打包，与上表已验收产物逐文件比较，仅 README 变化；

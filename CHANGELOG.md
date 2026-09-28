@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `/cluster` export with `createCachedCluster({ clusterOptions, cacheOptions })`.
-- Required bounded LRU storage with reverse-reference cleanup, RESP3 tracking and ttl=0.
-- Real Cluster tests for invalidation, eviction, in-flight replies, MOVED and reconnects.
+- On-demand storage without entry limits or LRU, with reverse-reference cleanup, RESP3 tracking and ttl=0.
+- Real Cluster tests for invalidation, in-flight replies, MOVED and reconnects.
 
 ### Changed
 - Requires Node.js >=18.19.0 and redis 5.12.1; upgrade the runtime before upgrading this package.

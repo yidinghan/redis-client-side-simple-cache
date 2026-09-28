@@ -1,7 +1,7 @@
 const { createCluster, BasicPooledClientSideCache } = require('redis');
 
-// Reuse command handling; own both maps so eviction also releases reverse keys.
-class BoundedClusterCache extends BasicPooledClientSideCache {
+// Reuse command handling; own both maps so invalidation also releases reverse keys.
+class ClusterCache extends BasicPooledClientSideCache {
   #entries = new Map();
   #keyToCacheKeys = new Map();
   #disabled = false;
@@ -15,8 +15,6 @@ class BoundedClusterCache extends BasicPooledClientSideCache {
       this.recordEvictions(1);
       return undefined;
     }
-    this.#entries.delete(cacheKey);
-    this.#entries.set(cacheKey, stored);
     return stored.entry;
   }
 
@@ -30,10 +28,6 @@ class BoundedClusterCache extends BasicPooledClientSideCache {
       return;
     }
     this.delete(cacheKey);
-    if (this.#entries.size >= this.maxEntries) {
-      this.deleteOldest();
-      this.recordEvictions(1);
-    }
     const redisKeys = [...new Set(keys.map(key => key.toString()))];
     this.#entries.set(cacheKey, { entry, keys: redisKeys });
     for (const key of redisKeys) {
@@ -54,11 +48,6 @@ class BoundedClusterCache extends BasicPooledClientSideCache {
       cacheKeys.delete(cacheKey);
       if (cacheKeys.size === 0) this.#keyToCacheKeys.delete(key);
     }
-  }
-
-  deleteOldest() {
-    const oldest = this.#entries.keys().next();
-    if (!oldest.done) this.delete(oldest.value);
   }
 
   invalidate(key) {
@@ -105,10 +94,7 @@ class BoundedClusterCache extends BasicPooledClientSideCache {
 }
 
 function createCachedCluster({ clusterOptions, cacheOptions } = {}) {
-  if (!Number.isSafeInteger(cacheOptions?.maxEntries) || cacheOptions.maxEntries <= 0) {
-    throw new TypeError('cacheOptions.maxEntries must be a positive safe integer');
-  }
-  const cache = new BoundedClusterCache({ ...cacheOptions, ttl: 0, evictPolicy: 'LRU' });
+  const cache = new ClusterCache({ ...cacheOptions, ttl: 0 });
   const client = createCluster({ ...clusterOptions, RESP: 3, clientSideCache: cache });
   return { client, cache };
 }

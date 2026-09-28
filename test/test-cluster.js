@@ -7,13 +7,12 @@ const { createCachedCluster } = require('../src/cluster');
 
 const urls = (process.env.REDIS_CLUSTER_URLS || '').split(',').map(url => url.trim()).filter(Boolean);
 
-function assertBounded(cache, maxEntries) {
+function assertConsistent(cache) {
   const entries = new Map(cache.entryEntries());
   const keySets = [...cache.keySetEntries()];
   let references = 0;
 
   assert.strictEqual(entries.size, cache.size());
-  assert.ok(entries.size <= maxEntries, 'Main entries must stay within capacity');
   for (const [, cacheKeys] of keySets) {
     assert.ok(cacheKeys.size > 0, 'Empty reverse sets must be removed');
     for (const cacheKey of cacheKeys) {
@@ -39,7 +38,7 @@ function waitForInvalidation(cache, key) {
     `Timed out waiting for invalidation of ${key}`);
 }
 
-test('cached Redis Cluster protocol and bounded storage', {
+test('cached Redis Cluster protocol and storage consistency', {
   skip: urls.length === 0 ? 'Set REDIS_CLUSTER_URLS to comma-separated Redis Cluster URLs' : false,
   timeout: 15000
 }, async t => {
@@ -47,8 +46,7 @@ test('cached Redis Cluster protocol and bounded storage', {
     rootNodes: urls.map(url => ({ url })),
     defaults: { socket: { connectTimeout: 1000, reconnectStrategy: () => 50 } }
   };
-  const maxEntries = 4;
-  const { client, cache } = createCachedCluster({ clusterOptions, cacheOptions: { maxEntries } });
+  const { client, cache } = createCachedCluster({ clusterOptions });
   const writer = redis.createCluster(clusterOptions);
   const prefix = `csc-cluster-test:${randomUUID()}`;
   const keys = ['a', 'b', 'c'].map(tag => `${prefix}:{${tag}}`);
@@ -88,7 +86,7 @@ test('cached Redis Cluster protocol and bounded storage', {
         assert.deepStrictEqual((await client.sMembers(keys[i])).sort(), expected[i]);
       }
       assert.strictEqual(cache.stats().hitCount - before.hitCount, keys.length);
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
     });
 
     await t.test('independent writer updates invalidate SMEMBERS and duplicate-key MGET replies', async () => {
@@ -106,7 +104,7 @@ test('cached Redis Cluster protocol and bounded storage', {
       const hits = cache.stats().hitCount;
       assert.deepStrictEqual(await client.sMembers(keys[2]), []);
       assert.strictEqual(cache.stats().hitCount, hits + 1);
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
 
       const repeatedKey = `${prefix}:duplicate-key`;
       keys.push(repeatedKey);
@@ -115,29 +113,12 @@ test('cached Redis Cluster protocol and bounded storage', {
       const repeatedHits = cache.stats().hitCount;
       assert.deepStrictEqual(await client.mGet([repeatedKey, repeatedKey]), ['before', 'before']);
       assert.strictEqual(cache.stats().hitCount, repeatedHits + 1);
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
 
       await writer.set(repeatedKey, 'after');
       await waitForInvalidation(cache, repeatedKey);
       assert.deepStrictEqual(await client.mGet([repeatedKey, repeatedKey]), ['after', 'after']);
-      assertBounded(cache, maxEntries);
-    });
-
-    await t.test('more than ten times capacity keeps entries and reverse references bounded', async () => {
-      cache.clear();
-      assert.deepStrictEqual(await client.sMembers(keys[0]), ['-2']);
-      for (let i = 0; i < maxEntries * 12; i++) {
-        const key = `${prefix}:rotation:${i}`;
-        keys.push(key);
-        if (i % 2 === 0) await writer.sAdd(key, String(i));
-        assert.deepStrictEqual(await client.sMembers(key), i % 2 === 0 ? [String(i)] : []);
-        const hits = cache.stats().hitCount;
-        assert.deepStrictEqual(await client.sMembers(keys[0]), ['-2']);
-        assert.strictEqual(cache.stats().hitCount, hits + 1, 'LRU must retain a repeatedly accessed hot key');
-        assertBounded(cache, maxEntries);
-      }
-      assert.strictEqual(cache.size(), maxEntries);
-      assert.ok(cache.stats().evictionCount > 0);
+      assertConsistent(cache);
     });
 
     await t.test('late replies after invalidation, clear or error cannot refill the cache', async () => {
@@ -155,7 +136,7 @@ test('cached Redis Cluster protocol and bounded storage', {
         resolveReply(['old-value']);
         assert.deepStrictEqual(await pending, ['old-value']);
         assert.strictEqual(cache.size(), 0, 'An invalidated in-flight reply must not be cached');
-        assertBounded(cache, maxEntries);
+        assertConsistent(cache);
       }
     });
 
@@ -176,7 +157,7 @@ test('cached Redis Cluster protocol and bounded storage', {
       const cachedKeys = new Map(cache.keySetEntries());
       assert.ok(!cachedKeys.has(keys[0]), 'Rediscovery must discard previously cached data');
       assert.ok(cachedKeys.has(key), 'The retried command must populate the current cache');
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
       cache.clear();
     });
 
@@ -185,12 +166,12 @@ test('cached Redis Cluster protocol and bounded storage', {
       assert.strictEqual(cache.size(), 1);
       await client.close();
       assert.strictEqual(cache.size(), 0);
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
       await writer.sAdd(keys[0], 'new-value');
       await client.connect();
       assert.strictEqual(cache.size(), 0);
       assert.deepStrictEqual((await client.sMembers(keys[0])).sort(), ['-2', 'new-value']);
-      assertBounded(cache, maxEntries);
+      assertConsistent(cache);
     });
 
     await t.test('killed tracking connection clears cache and reconnects automatically', async () => {
@@ -210,12 +191,12 @@ test('cached Redis Cluster protocol and bounded storage', {
         assert.strictEqual(await writerNode.sendCommand(['CLIENT', 'KILL', 'ID', String(connectionId)]), 1);
         await waitFor(() => expectedDisconnectErrors.length > 0, 'The killed reader must report a socket error');
         assert.strictEqual(cache.size(), 0, 'The actual socket error must clear tracked cached values');
-        assertBounded(cache, maxEntries);
+        assertConsistent(cache);
         await writer.sAdd(keys[0], 'after-disconnect');
         await waitFor(() => reconnected, 'The reader must reconnect automatically');
         assert.notStrictEqual(await readerNode.clientId(), connectionId);
         assert.deepStrictEqual((await client.sMembers(keys[0])).sort(), ['-2', 'after-disconnect', 'new-value']);
-        assertBounded(cache, maxEntries);
+        assertConsistent(cache);
       } finally {
         expectDisconnect = false;
       }

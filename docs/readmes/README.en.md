@@ -84,22 +84,22 @@ console.log(cacheWithStats.stats());
 // }
 ```
 
-## Bounded Redis Cluster cache
+## Redis Cluster cache
 
-This entry point provides **bounded hot-data caching for Redis Cluster**. node-redis
-provides the Cluster connection; this package bounds entries and removes their reverse
-references on eviction, so limiting the main cache does not leave old references behind.
+This entry point provides on-demand caching for Redis Cluster. node-redis handles the
+Cluster connection and commands; this package maintains cached entries and reverse
+references, removing both when an invalidation arrives.
 
 | Behavior | Root `SimpleClientSideCache` | `/cluster` `createCachedCluster` |
 |---|---|---|
 | Integration | Provider passed by the caller to `createClient` | Creates the Cluster client and matching pooled provider together |
-| Capacity and eviction | Unbounded by default; custom Maps do not coordinate eviction between the two maps | Required `maxEntries`, built-in LRU and reverse-reference cleanup |
+| Storage | Native Map by default, with custom Map injection | Native Map, without custom Map injection |
+| Capacity and eviction | No entry limit or LRU by default | No entry limit or LRU |
 | In-flight reads after invalidation | A completed response can refill the cache | A stale response may reach its caller but cannot refill the cache |
 | Connection lifecycle | Already clears on `onError` / `onClose` | Reuses node-redis Cluster lifecycle handling, including topology rediscovery |
 
-The separate entry point preserves the root API and custom Map extension while meeting
-Cluster's pooled-provider requirement. The new bounded behavior is currently exposed
-only through `/cluster`; the root implementation is unchanged.
+The separate entry point meets Cluster's pooled-provider requirement. The root API,
+implementation and custom Map extension remain unchanged.
 
 ```javascript
 const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
@@ -107,8 +107,7 @@ const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
 const { client, cache } = createCachedCluster({
   clusterOptions: {
     rootNodes: [{ url: 'redis://127.0.0.1:16379' }]
-  },
-  cacheOptions: { maxEntries: 10000 }
+  }
 });
 
 client.on('error', console.error);
@@ -118,13 +117,12 @@ console.log(cache.size(), cache.stats());
 await client.close();
 ```
 
-The factory returns a disconnected client; the caller owns its lifecycle. `maxEntries`
-must be a positive safe integer and includes empty results and in-flight reads.
-The cache uses RESP3, LRU, `ttl=0` and ordinary tracking. Eviction also removes reverse
-references. Connection errors, closure and topology rediscovery clear cached data.
-Invalidated in-flight responses may still reach their caller but cannot refill the cache.
-`cacheOptions.recordStats` follows node-redis. The example capacity is not a production
-recommendation, and an entry limit is not a process-memory byte limit.
+The factory returns a disconnected client; the caller owns its lifecycle. The cache
+uses RESP3, `ttl=0` and ordinary tracking, and caches empty results too. Connection
+errors, closure and topology rediscovery clear cached data. Invalidated in-flight
+responses may still reach their caller but cannot refill the cache.
+`cacheOptions.recordStats` follows node-redis. On-demand caching has no entry limit or
+automatic eviction and does not guarantee bounded process memory.
 
 Start an isolated three-primary Cluster with `bash scripts/test-cluster-env.sh up` and
 remove it with `bash scripts/test-cluster-env.sh down`. Docker is the default; override

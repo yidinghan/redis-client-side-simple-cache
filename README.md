@@ -86,20 +86,20 @@ console.log(cacheWithStats.stats());
 // }
 ```
 
-## Redis Cluster 有界缓存
+## Redis Cluster 缓存
 
-这个入口提供 **Redis Cluster 上的有界热点缓存**。Cluster 连接由 `node-redis`
-提供；本包增加容量约束，并让淘汰同步回收反向引用，避免只限制主缓存却保留旧引用。
+这个入口提供 Redis Cluster 上的按需缓存。Cluster 连接和命令处理由 `node-redis`
+提供；本包维护缓存和反向引用，收到失效通知时一起清理。
 
 | 行为 | 根入口 `SimpleClientSideCache` | `/cluster` 的 `createCachedCluster` |
 |---|---|---|
 | 接入方式 | 创建 provider，由调用方传给 `createClient` | 同时创建 Cluster client 和匹配的 pooled provider |
-| 容量与淘汰 | 默认无界，可注入自定义 Map；两张 Map 没有联动淘汰 | 必填 `maxEntries`，内建 LRU，淘汰同步清理反向引用 |
+| 存储 | 默认原生 Map，可注入自定义 Map | 原生 Map，不提供自定义 Map 注入 |
+| 容量与淘汰 | 默认无数量限制、无 LRU | 无数量限制、无 LRU |
 | 失效后的在途读取 | 完成后仍可能重新写入缓存 | 旧响应可以返回调用方，但不能重新填入缓存 |
 | 连接生命周期 | 已有 `onError` / `onClose` 清缓存 | 复用 node-redis 的 Cluster 生命周期，包括拓扑重发现清理 |
 
-独立入口保留原 API 和自定义 Map 扩展，同时满足 Cluster 对 pooled provider 的要求。
-当前新增的容量能力只通过 `/cluster` 提供；原根入口实现不变。
+独立入口满足 Cluster 对 pooled provider 的要求，原根入口及其自定义 Map 扩展保持不变。
 
 ```javascript
 const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
@@ -107,8 +107,7 @@ const { createCachedCluster } = require('@playding/redis-simple-csc/cluster');
 const { client, cache } = createCachedCluster({
   clusterOptions: {
     rootNodes: [{ url: 'redis://127.0.0.1:16379' }]
-  },
-  cacheOptions: { maxEntries: 10000 }
+  }
 });
 
 client.on('error', console.error);
@@ -118,12 +117,11 @@ console.log(cache.size(), cache.stats());
 await client.close();
 ```
 
-factory 返回尚未连接的客户端；调用方负责连接和关闭。`maxEntries` 必须是正安全整数，
-包含空结果及未完成读取。使用 RESP3、LRU、`ttl=0` 和 ordinary tracking；淘汰同步
-回收反向引用。连接关闭、错误或拓扑重发现会清缓存，失效前的在途读取不会重新填入。
+factory 返回尚未连接的客户端；调用方负责连接和关闭。使用 RESP3、`ttl=0` 和
+ordinary tracking。空结果也会缓存；连接关闭、错误或拓扑重发现会清缓存。
+失效前的在途请求仍可能向调用方返回旧响应，但该响应不能重新填入缓存。
 `cacheOptions.recordStats` 可沿用 node-redis 的统计开关。
-示例容量不代表生产推荐值；条目数上限不是进程内存字节上限。失效前的在途请求
-仍可能向调用方返回旧响应，但该响应不能重新填入缓存。
+按需缓存没有数量限制或自动淘汰，不保证进程内存始终有界。
 
 本地可用 `bash scripts/test-cluster-env.sh up` 启动隔离的三主节点 Cluster，
 用 `bash scripts/test-cluster-env.sh down` 清理。默认使用 Docker，可设置
